@@ -25,7 +25,7 @@ def main():
     All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
     """
     def call_function(function_call_part,verbose=False):
-        function_name = function_call_part.
+        function_name = function_call_part.name
         
         if verbose:
             print(f" - Calling function: {function_call_part.name}({function_call_part.args})")
@@ -89,32 +89,42 @@ def main():
             schema_write_file,
         ]
     )
-    
+
     messages = [types.Content(role="user", parts=[types.Part(text=user_prompt)])]
-    response = client.models.generate_content(
-        model="gemini-2.0-flash-001", 
-        contents=messages,
-        config=types.GenerateContentConfig(
-            tools=[available_functions], 
-            system_instruction=system_prompt
-        )
-    )
-
-    prompt_tokens = response.usage_metadata.prompt_token_count
-    response_tokens = response.usage_metadata.candidates_token_count
-    function_call = response.function_calls
     
+    for i in range(0, 20):
 
-    if function_call:
-        result = call_function(function_call[0], verbose)
-        if verbose == True:
-            print(f"-> {result.parts[0].function_response.response}")
-    else:
-        print(response.text)
-    if verbose:
-        print(f"User prompt: {user_prompt}")
-        print(f"Prompt tokens: {prompt_tokens}")
-        print(f"Response tokens: {response_tokens}")
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-001", 
+            contents=messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions], 
+                system_instruction=system_prompt
+            )
+        )
+
+        for candidate in response.candidates:
+            messages.append(candidate.content)
+
+        prompt_tokens = response.usage_metadata.prompt_token_count
+        response_tokens = response.usage_metadata.candidates_token_count
+        function_call = response.function_calls
+        
+        if verbose:
+            print(f"User prompt: {user_prompt}")
+            print(f"Prompt tokens: {prompt_tokens}")
+            print(f"Response tokens: {response_tokens}")
+
+        if function_call:
+            result = call_function(function_call[0], verbose)
+            messages.append(result)
+            if verbose == True:
+                print(f"-> {result.parts[0].function_response.response}")
+        else:
+            print(response.text)
+            break
+    
         
 
 
